@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pl"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Huffman.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">aisd_lab_7_huffman</a> &gt; <a href="index.source.html" class="el_package">pl.edu.pw.ee</a> &gt; <span class="el_source">Huffman.java</span></div><h1>Huffman.java</h1><pre class="source lang-java linenums">package pl.edu.pw.ee;
+
+import java.io.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.PriorityQueue;
+import java.util.Queue;
+
+<span class="fc" id="L9">public class Huffman {</span>
+
+	private String inputFileName;
+	private String outputFileName;
+	private String decodedFileName;
+	private String treeFileName;
+
+	private FileReader inputFileReader;
+	private PrintStream outputFile;
+	private PrintStream decodedFile;
+	private PrintStream treeFile;
+	private FileReader treeReader;
+	private FileReader encodedFile;
+	private Map&lt;Character, Integer&gt; charFrequencies;
+	private Map&lt;Character, String&gt; huffmanCodes;
+	private Map&lt;String, Character&gt; huffmanChars;
+	private String encodedText;
+<span class="fc" id="L26">	private int nChars = 0;</span>
+<span class="fc" id="L27">	private int nBits = 0;</span>
+
+	public int huffman(String pathToRootDir, boolean compress) throws IOException {
+
+<span class="fc" id="L31">		inputFileName = pathToRootDir + &quot;in&quot;;</span>
+<span class="fc" id="L32">		outputFileName = pathToRootDir + &quot;out&quot;;</span>
+<span class="fc" id="L33">		treeFileName = pathToRootDir + &quot;tree&quot;;</span>
+<span class="fc" id="L34">		decodedFileName = pathToRootDir + &quot;decompressed&quot;;</span>
+
+<span class="fc bfc" id="L36" title="All 2 branches covered.">		if(compress) {</span>
+<span class="fc" id="L37">			encode();</span>
+<span class="fc" id="L38">			return nBits;</span>
+		} else {
+<span class="fc" id="L40">			decode();</span>
+<span class="fc" id="L41">			return nChars;</span>
+		}
+    }
+
+	private void encode() throws IOException {
+<span class="fc" id="L46">		fillCharFrequenciesMap();</span>
+<span class="fc" id="L47">		huffmanCodes = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L48">		generateHuffmanCodes(buildTree(), &quot;&quot;);</span>
+<span class="fc" id="L49">		getEncodedText();</span>
+<span class="fc" id="L50">		writeEncodedTextToFile();</span>
+<span class="fc" id="L51">		writeTreeToFile();</span>
+<span class="fc" id="L52">	}</span>
+
+	private Node buildTree() {
+<span class="fc" id="L55">		Queue&lt;Node&gt; queue = new PriorityQueue&lt;&gt;();</span>
+<span class="fc" id="L56">		charFrequencies.forEach((character, frequency) -&gt; queue.add(new Leaf(character, frequency)));</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">		while (queue.size() &gt; 1) {</span>
+<span class="fc" id="L58">			queue.add(new Node(queue.poll(), queue.poll()));</span>
+		}
+<span class="fc" id="L60">		return queue.poll();</span>
+	}
+
+	private void writeTreeToFile() throws FileNotFoundException {
+<span class="fc" id="L64">		this.treeFile = new PrintStream(new FileOutputStream(treeFileName));</span>
+<span class="fc bfc" id="L65" title="All 2 branches covered.">		for (var entry : huffmanCodes.entrySet()) {</span>
+<span class="fc" id="L66">			treeFile.print(entry.getKey() + entry.getValue() + &quot;/&quot;);</span>
+<span class="fc" id="L67">		}</span>
+<span class="fc" id="L68">	}</span>
+
+
+	private void writeEncodedTextToFile() throws FileNotFoundException {
+<span class="fc" id="L72">		this.outputFile = new PrintStream(new FileOutputStream(outputFileName));</span>
+<span class="fc" id="L73">		int idx = 0;</span>
+<span class="fc" id="L74">		int sizeOfBuf = 8;</span>
+
+<span class="fc" id="L76">		String nBitsBinary = Integer.toBinaryString(nBits);</span>
+<span class="fc" id="L77">		String zeros = &quot;00000000000000000000000000000000&quot;;</span>
+<span class="fc" id="L78">		nBitsBinary = (zeros + nBitsBinary).substring(nBitsBinary.length());</span>
+<span class="fc" id="L79">		encodedText = nBitsBinary + encodedText;</span>
+<span class="fc" id="L80">		nBits+=32;</span>
+
+<span class="fc bfc" id="L82" title="All 2 branches covered.">		while (idx+sizeOfBuf &lt;= nBits) {</span>
+<span class="fc" id="L83">			String buf = encodedText.substring(idx, idx + sizeOfBuf);</span>
+<span class="fc" id="L84">			idx += sizeOfBuf;</span>
+<span class="fc" id="L85">			int val = Integer.parseInt(buf, 2);</span>
+<span class="fc" id="L86">			outputFile.print((char) val);</span>
+<span class="fc" id="L87">		}</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">		if(idx == nBits) {</span>
+<span class="nc" id="L89">			return;</span>
+		}
+<span class="fc" id="L91">		StringBuilder buf = new StringBuilder(encodedText.substring(idx));</span>
+<span class="fc bfc" id="L92" title="All 2 branches covered.">		while (buf.length() &lt; sizeOfBuf) {</span>
+<span class="fc" id="L93">			buf.append(&quot;0&quot;);</span>
+<span class="fc" id="L94">			nBits++;</span>
+		}
+<span class="fc" id="L96">		int val = Integer.parseInt(buf.toString(), 2);</span>
+<span class="fc" id="L97">		outputFile.print((char) val);</span>
+
+<span class="fc" id="L99">	}</span>
+
+	private void getEncodedText() throws IOException {
+<span class="fc" id="L102">		inputFileReader = new FileReader(inputFileName);</span>
+<span class="fc" id="L103">		StringBuilder sb = new StringBuilder();</span>
+<span class="fc" id="L104">		int currentInt = inputFileReader.read();</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">		while(currentInt != -1){</span>
+<span class="fc" id="L106">			Character currentCharacter = (char)currentInt;</span>
+<span class="fc" id="L107">			sb.append(huffmanCodes.get(currentCharacter));</span>
+<span class="fc" id="L108">			nBits += huffmanCodes.get(currentCharacter).length();</span>
+<span class="fc" id="L109">			currentInt = inputFileReader.read();</span>
+<span class="fc" id="L110">		}</span>
+<span class="fc" id="L111">		this.encodedText = sb.toString();</span>
+<span class="fc" id="L112">	}</span>
+
+	private void generateHuffmanCodes(Node node, String code) {
+<span class="fc bfc" id="L115" title="All 2 branches covered.">		if (node instanceof Leaf) {</span>
+<span class="fc" id="L116">			huffmanCodes.put(((Leaf) node).getCharacter(), code);</span>
+<span class="fc" id="L117">			return;</span>
+		}
+<span class="fc" id="L119">		generateHuffmanCodes(node.getLeftNode(), code.concat(&quot;0&quot;));</span>
+<span class="fc" id="L120">		generateHuffmanCodes(node.getRightNode(), code.concat(&quot;1&quot;));</span>
+<span class="fc" id="L121">	}</span>
+
+	private void fillCharFrequenciesMap() throws IOException {
+<span class="fc" id="L124">		this.inputFileReader = new FileReader(inputFileName);</span>
+<span class="fc" id="L125">		charFrequencies = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L126">		int currentInt = inputFileReader.read();</span>
+<span class="fc bfc" id="L127" title="All 2 branches covered.">		while(currentInt != -1){</span>
+<span class="fc" id="L128">			Character currentCharacter = (char)currentInt;</span>
+<span class="fc" id="L129">			Integer currentFrequency = charFrequencies.get(currentCharacter);</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">			charFrequencies.put(currentCharacter, currentFrequency != null ? currentFrequency + 1 : 1);</span>
+
+<span class="fc" id="L132">			currentInt = inputFileReader.read();</span>
+<span class="fc" id="L133">		}</span>
+<span class="fc" id="L134">	}</span>
+
+	private void decode() throws IOException {
+<span class="fc" id="L137">		readTreeFromFile();</span>
+<span class="fc" id="L138">		readEncodedText();</span>
+<span class="fc" id="L139">		setNBits();</span>
+<span class="fc" id="L140">		writeDecodedTextToFile();</span>
+<span class="fc" id="L141">	}</span>
+
+	private void writeDecodedTextToFile() throws FileNotFoundException {
+<span class="fc" id="L144">		decodedFile = new PrintStream(decodedFileName);</span>
+
+<span class="fc" id="L146">		StringBuilder sb = new StringBuilder();</span>
+
+<span class="fc bfc" id="L148" title="All 2 branches covered.">		for (int i = 0; i &lt; nBits; i++) {</span>
+<span class="fc" id="L149">			sb.append(encodedText.charAt(i));</span>
+<span class="fc" id="L150">			Character val = huffmanChars.get(sb.toString());</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">			if (val == null) {</span>
+<span class="fc" id="L152">				continue;</span>
+			}
+<span class="fc" id="L154">			decodedFile.print(val);</span>
+<span class="fc" id="L155">			nChars++;</span>
+<span class="fc" id="L156">			sb.setLength(0);</span>
+		}
+
+<span class="fc" id="L159">	}</span>
+
+	private void setNBits() {
+<span class="fc" id="L162">		String nBitsBinary = encodedText.substring(0, 32);</span>
+<span class="fc" id="L163">		nBits = Integer.parseInt(nBitsBinary, 2);</span>
+<span class="fc" id="L164">		encodedText = encodedText.substring(32);</span>
+<span class="fc" id="L165">	}</span>
+
+	private void readEncodedText() throws IOException {
+<span class="fc" id="L168">		encodedFile = new FileReader(outputFileName);</span>
+<span class="fc" id="L169">		StringBuilder sb = new StringBuilder();</span>
+
+<span class="fc" id="L171">		int currentInt = encodedFile.read();</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">		while (currentInt != -1) {</span>
+<span class="fc" id="L173">			String zeros = &quot;00000000&quot;;</span>
+<span class="fc" id="L174">			String currentBinary = Integer.toBinaryString(currentInt);</span>
+<span class="fc" id="L175">			currentBinary = (zeros + currentBinary).substring(currentBinary.length());</span>
+<span class="fc" id="L176">			sb.append(currentBinary);</span>
+<span class="fc" id="L177">			currentInt = encodedFile.read();</span>
+<span class="fc" id="L178">		}</span>
+<span class="fc" id="L179">		encodedText = sb.toString();</span>
+
+<span class="fc" id="L181">	}</span>
+
+	private void readTreeFromFile() throws IOException {
+<span class="fc" id="L184">		this.treeReader = new FileReader(treeFileName);</span>
+<span class="fc" id="L185">		this.huffmanChars = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L186">		huffmanCodes = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L187">		int currentInt = treeReader.read();</span>
+<span class="fc bfc" id="L188" title="All 2 branches covered.">		while (currentInt != -1) {</span>
+<span class="fc" id="L189">			char currentChar = (char)currentInt;</span>
+<span class="fc" id="L190">			currentInt = treeReader.read();</span>
+<span class="fc" id="L191">			StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L192" title="All 2 branches covered.">			while ((char)currentInt != '/') {</span>
+<span class="fc" id="L193">				sb.append((char)currentInt);</span>
+<span class="fc" id="L194">				currentInt = treeReader.read();</span>
+			}
+<span class="fc" id="L196">			huffmanChars.put(sb.toString(), currentChar);</span>
+<span class="fc" id="L197">			currentInt = treeReader.read();</span>
+<span class="fc" id="L198">		}</span>
+
+<span class="fc" id="L200">	}</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
